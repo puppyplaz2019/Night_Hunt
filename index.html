@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sanco's Night Hunt (Night Vision)</title>
+    <style>
+        body { margin: 0; background: #001a00; overflow: hidden; font-family: 'Courier New', Courier, monospace; cursor: crosshair; }
+        canvas { display: block; filter: sepia(100%) saturate(300%) hue-rotate(60deg); } /* Night Vision Look */
+        
+        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px #0f0; pointer-events: none; }
+        
+        #game-over {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 30, 0, 0.95); padding: 30px; border: 4px solid #0f0;
+            text-align: center; display: none; width: 400px; color: #0f0;
+        }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-weight: bold; text-decoration: none; cursor: pointer; border: 2px solid #0f0; background: transparent; color: #0f0; font-size: 16px; text-transform: uppercase; }
+        .btn:hover { background: #0f0; color: #000; }
+        .sponsor-text { font-size: 14px; color: #0a0; margin: 15px 0 5px 0; }
+    </style>
+</head>
+<body>
+
+<div id="ui">SCORE: <span id="score">0</span> | TIME: <span id="timer">60</span></div>
+
+<div id="game-over">
+    <h1 style="margin-top:0;">HUNT COMPLETE</h1>
+    <p id="final-stats"></p>
+    
+    <p class="sponsor-text">Want to see the pros in the wild?</p>
+    <a class="btn" href="https://www.youtube.com/@SancoOutdoors" target="_blank">🎬 SUB TO SANCO</a>
+    
+    <p class="sponsor-text">Or support the fine arts:</p>
+    <a class="btn" href="https://www.sanangelogives.org/organization/emmanuelschooloffinearts" target="_blank">🎻 TIP ESOFA</a>
+    
+    <button class="btn" style="border-color: #aaa; color: #aaa;" onclick="location.reload()">RE-LOAD</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let score = 0;
+let timeLeft = 60;
+let gameActive = true;
+const deerArray = [];
+const particles = [];
+
+// Mouse Position
+let mouseX = 0;
+let mouseY = 0;
+window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+
+// Shooting Logic
+window.addEventListener('mousedown', () => {
+    if (!gameActive) return;
+    
+    // Check for hits
+    for (let i = deerArray.length - 1; i >= 0; i--) {
+        let d = deerArray[i];
+        let dist = Math.sqrt((mouseX - d.x)**2 + (mouseY - d.y)**2);
+        if (dist < 50) {
+            score += 10;
+            createTagEffect(d.x, d.y);
+            deerArray.splice(i, 1);
+            document.getElementById('score').innerText = score;
+        }
+    }
+});
+
+function createTagEffect(x, y) {
+    // Zero-blood flash/tag effect
+    for(let i=0; i<10; i++) {
+        particles.push({
+            x: x, y: y, 
+            vx: (Math.random()-0.5)*10, 
+            vy: (Math.random()-0.5)*10, 
+            life: 20
+        });
+    }
+}
+
+function spawnDeer() {
+    if (!gameActive) return;
+    let side = Math.random() > 0.5 ? 1 : -1;
+    deerArray.push({
+        x: side === 1 ? -100 : canvas.width + 100,
+        y: canvas.height * 0.5 + (Math.random() * 200),
+        speed: (2 + Math.random() * 4) * side,
+        w: 80, h: 60,
+        frame: 0
+    });
+    setTimeout(spawnDeer, 1500 - (score * 5)); // Gets faster as you score
+}
+
+function update() {
+    if (!gameActive) return;
+
+    deerArray.forEach((d, i) => {
+        d.x += d.speed;
+        d.frame += 0.1;
+        if (d.x > canvas.width + 200 || d.x < -200) deerArray.splice(i, 1);
+    });
+
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    });
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    // Clear and build background
+    ctx.fillStyle = '#002200';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Forest Silhouettes
+    ctx.fillStyle = '#001100';
+    for(let i=0; i<canvas.width; i+=100) {
+        ctx.fillRect(i, canvas.height - 300, 40, 300); // Simple Trees
+    }
+
+    // Draw Deer (Clean shapes)
+    deerArray.forEach(d => {
+        ctx.fillStyle = '#0f0';
+        let jump = Math.abs(Math.sin(d.frame)) * 10;
+        // Body
+        ctx.fillRect(d.x, d.y - jump, 60, 30);
+        // Legs
+        ctx.fillRect(d.x + 10, d.y + 30 - jump, 5, 20);
+        ctx.fillRect(d.x + 45, d.y + 30 - jump, 5, 20);
+        // Neck/Head
+        ctx.fillRect(d.x + (d.speed > 0 ? 50 : -10), d.y - 30 - jump, 15, 40);
+        // Antlers
+        ctx.fillRect(d.x + (d.speed > 0 ? 50 : -15), d.y - 45 - jump, 25, 5);
+    });
+
+    // Draw Tag Particles
+    ctx.fillStyle = '#fff';
+    particles.forEach(p => ctx.fillRect(p.x, p.y, 4, 4));
+
+    // Night Vision HUD (The Scope)
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 60, 0, Math.PI * 2);
+    ctx.moveTo(mouseX - 80, mouseY); ctx.lineTo(mouseX + 80, mouseY);
+    ctx.moveTo(mouseX, mouseY - 80); ctx.lineTo(mouseX, mouseY + 80);
+    ctx.stroke();
+
+    // Vignette
+    let grad = ctx.createRadialGradient(mouseX, mouseY, 100, mouseX, mouseY, 600);
+    grad.addColorStop(0, 'rgba(0,40,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+}
+
+const timerInt = setInterval(() => {
+    if (!gameActive) return;
+    timeLeft--;
+    document.getElementById('timer').innerText = timeLeft;
+    if (timeLeft <= 0) {
+        gameActive = false;
+        clearInterval(timerInt);
+        document.getElementById('final-stats').innerText = `TOTAL TAGS: ${score/10} | TOTAL SCORE: ${score}`;
+        document.getElementById('game-over').style.display = 'block';
+    }
+}, 1000);
+
+spawnDeer();
+update();
+</script>
+</body>
+</html>
