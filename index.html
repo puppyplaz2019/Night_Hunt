@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sanco's Night Hunt - Realistic NVG</title>
+    <title>Sanco's Night Hunt - Trophy Buck Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; cursor: none; }
         canvas { display: block; }
@@ -21,16 +21,16 @@
 </head>
 <body>
 
-<div id="ui">SYSTEM_ACTIVE // SCORE: <span id="score">0</span> // TIME: <span id="timer">60</span>s</div>
+<div id="ui">NV_SYSTEM_ONLINE // SCORE: <span id="score">0</span> // TIME: <span id="timer">60</span>s</div>
 
 <div id="game-over">
-    <h1 style="margin-top:0; letter-spacing: 4px;">SESSION ENDED</h1>
+    <h1 style="margin-top:0; letter-spacing: 4px;">HUNT CONCLUDED</h1>
     <p id="final-stats"></p>
     <p class="sponsor-text">You've tried the course. Now watch the real pros.</p>
     <a class="btn" href="https://www.youtube.com/@SancoOutdoors" target="_blank">🎬 SUB TO SANCO</a>
     <p class="sponsor-text">Or please tip the sponsor:</p>
     <a class="btn" href="https://www.sanangelogives.org/organization/emmanuelschooloffinearts" target="_blank">🎻 TIP ESOFA</a>
-    <button class="btn" style="border-color: #555; color: #555;" onclick="location.reload()">RE-INITIALIZE</button>
+    <button class="btn" style="border-color: #555; color: #555;" onclick="location.reload()">RE-SYNC SYSTEM</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -47,12 +47,13 @@ let gameActive = true;
 let flashOpacity = 0;
 const deerArray = [];
 
-// Create static forest for depth
-const trees = Array.from({length: 40}, () => ({
+// Realistic forest backdrop
+const trees = Array.from({length: 45}, () => ({
     x: Math.random() * canvas.width,
     y: canvas.height - 100,
-    size: 100 + Math.random() * 400,
-    speed: 0.2 + Math.random() * 0.5
+    w: 20 + Math.random() * 30,
+    h: 200 + Math.random() * 400,
+    shade: 5 + Math.floor(Math.random() * 15)
 }));
 
 let mouseX = canvas.width/2, mouseY = canvas.height/2;
@@ -60,13 +61,13 @@ window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clien
 
 window.addEventListener('mousedown', () => {
     if (!gameActive) return;
-    flashOpacity = 0.8; // Camera flash effect
+    flashOpacity = 0.7; 
     
     for (let i = deerArray.length - 1; i >= 0; i--) {
         let d = deerArray[i];
         let dx = mouseX - (d.x + d.w/2);
         let dy = mouseY - (d.y + d.h/2);
-        if (Math.sqrt(dx*dx + dy*dy) < 50) {
+        if (Math.sqrt(dx*dx + dy*dy) < 60) {
             score += 10;
             deerArray.splice(i, 1);
             document.getElementById('score').innerText = score;
@@ -80,29 +81,39 @@ function drawDeer(d) {
     if (d.speed < 0) { ctx.scale(-1, 1); ctx.translate(-d.w, 0); }
     
     ctx.fillStyle = '#0f0';
-    let walk = Math.sin(d.frame) * 5;
+    let walk = Math.sin(d.frame) * 4;
 
-    // Body (Elliptical)
+    // Muscular Body
     ctx.beginPath();
-    ctx.ellipse(40, 35, 35, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(45, 40, 42, 22, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Legs
-    ctx.fillRect(15, 45, 3, 20 + walk);
-    ctx.fillRect(25, 45, 3, 20 - walk);
-    ctx.fillRect(55, 45, 3, 20 + walk);
-    ctx.fillRect(65, 45, 3, 20 - walk);
+    // Thicker Legs
+    ctx.fillRect(18, 50, 5, 25 + walk);
+    ctx.fillRect(30, 50, 5, 25 - walk);
+    ctx.fillRect(60, 50, 5, 25 + walk);
+    ctx.fillRect(72, 50, 5, 25 - walk);
 
-    // Neck and Head
+    // Thick Neck and Realistic Head
     ctx.beginPath();
-    ctx.moveTo(65, 30);
-    ctx.lineTo(85, 5); // Neck
-    ctx.ellipse(88, 5, 12, 7, -0.5, 0, Math.PI * 2); // Head
+    ctx.moveTo(70, 40);
+    ctx.quadraticCurveTo(85, 40, 95, 10); // Neck curve
+    ctx.lineTo(110, 15); // Snout
+    ctx.lineTo(105, 5); 
+    ctx.lineTo(90, 5);
     ctx.fill();
     
-    // Ears/Antlers
-    ctx.fillRect(80, -5, 2, 8);
-    ctx.fillRect(85, -8, 2, 10);
+    // Large Branching Antlers (Trophy Buck style)
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    // Main beams
+    ctx.moveTo(92, 5); ctx.quadraticCurveTo(80, -30, 110, -50);
+    ctx.moveTo(96, 5); ctx.quadraticCurveTo(110, -30, 130, -40);
+    // Tines (points)
+    ctx.moveTo(95, -25); ctx.lineTo(105, -45);
+    ctx.moveTo(105, -35); ctx.lineTo(120, -55);
+    ctx.stroke();
     
     ctx.restore();
 }
@@ -111,73 +122,80 @@ function spawnDeer() {
     if (!gameActive) return;
     let dir = Math.random() > 0.5 ? 1 : -1;
     deerArray.push({
-        x: dir === 1 ? -100 : canvas.width + 100,
-        y: canvas.height - 250 + (Math.random() * 100),
-        speed: (3 + Math.random() * 3) * dir,
-        w: 100, h: 80, frame: 0
+        x: dir === 1 ? -150 : canvas.width + 150,
+        y: canvas.height - 280 + (Math.random() * 80),
+        speed: (2.5 + Math.random() * 2.5) * dir,
+        w: 120, h: 100, frame: 0
     });
-    setTimeout(spawnDeer, 2000 - Math.min(score * 10, 1200));
+    setTimeout(spawnDeer, 2200 - Math.min(score * 8, 1400));
 }
 
 function update() {
     if (!gameActive) return;
     deerArray.forEach((d, i) => {
         d.x += d.speed;
-        d.frame += 0.15;
-        if (d.x > canvas.width + 200 || d.x < -200) deerArray.splice(i, 1);
+        d.frame += 0.12;
+        if (d.x > canvas.width + 300 || d.x < -300) deerArray.splice(i, 1);
     });
-    if (flashOpacity > 0) flashOpacity -= 0.1;
+    if (flashOpacity > 0) flashOpacity -= 0.08;
     draw();
     requestAnimationFrame(update);
 }
 
 function draw() {
-    // Background (Dark Forest)
     ctx.fillStyle = '#001a00';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Parallax Trees
-    ctx.fillStyle = '#000d00';
     trees.forEach(t => {
-        ctx.fillRect(t.x, canvas.height - t.size, 15, t.size);
+        ctx.fillStyle = `rgb(0, ${t.shade}, 0)`;
+        ctx.fillRect(t.x, canvas.height - t.h, t.w, t.h);
     });
 
-    // Draw Deer
     deerArray.forEach(drawDeer);
 
-    // Flash Effect
     if (flashOpacity > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // SCOPE OVERLAY
+    // BINOCULAR SCOPE OVERLAY
     ctx.save();
-    // Darken everything outside the lens
+    
+    // Binocular Cutout (Two circles)
     ctx.beginPath();
-    ctx.arc(mouseX, mouseY, 180, 0, Math.PI * 2, false);
+    let offset = 160; 
+    ctx.arc(mouseX - offset, mouseY, 220, 0, Math.PI * 2, false);
+    ctx.arc(mouseX + offset, mouseY, 220, 0, Math.PI * 2, false);
     ctx.rect(canvas.width, 0, -canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.92)";
     ctx.fill();
 
-    // Scope Lens Tint
-    ctx.beginPath();
-    ctx.arc(mouseX, mouseY, 180, 0, Math.PI * 2);
+    // Binocular Borders
     ctx.strokeStyle = '#0f0';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(mouseX - offset, mouseY, 220, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(mouseX + offset, mouseY, 220, 0, Math.PI * 2);
     ctx.stroke();
     
-    // Crosshairs
+    // Grid Lines (from your screenshot)
     ctx.lineWidth = 1;
-    ctx.moveTo(mouseX - 200, mouseY); ctx.lineTo(mouseX + 200, mouseY);
-    ctx.moveTo(mouseX, mouseY - 200); ctx.lineTo(mouseX, mouseY + 200);
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+    for(let x = -400; x <= 400; x += 80) {
+        ctx.moveTo(mouseX + x, mouseY - 220); ctx.lineTo(mouseX + x, mouseY + 220);
+    }
+    for(let y = -220; y <= 220; y += 80) {
+        ctx.moveTo(mouseX - 380, mouseY + y); ctx.lineTo(mouseX + 380, mouseY + y);
+    }
     ctx.stroke();
 
-    // Scanlines effect
-    ctx.fillStyle = "rgba(0, 255, 0, 0.05)";
-    for(let i=0; i<canvas.height; i+=4) {
-        ctx.fillRect(0, i, canvas.width, 1);
-    }
+    // Scanlines
+    ctx.fillStyle = "rgba(0, 255, 0, 0.04)";
+    for(let i=0; i<canvas.height; i+=4) { ctx.fillRect(0, i, canvas.width, 1); }
+    
     ctx.restore();
 }
 
@@ -187,7 +205,7 @@ const timerInt = setInterval(() => {
     document.getElementById('timer').innerText = timeLeft;
     if (timeLeft <= 0) {
         gameActive = false;
-        document.getElementById('final-stats').innerText = `TOTAL TAGS: ${score/10} // FINAL SCORE: ${score}`;
+        document.getElementById('final-stats').innerText = `TROPHY TAGS: ${score/10} // TOTAL SCORE: ${score}`;
         document.getElementById('game-over').style.display = 'block';
     }
 }, 1000);
