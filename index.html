@@ -2,38 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sanco's Night Hunt (Night Vision)</title>
+    <title>Sanco's Night Hunt - Realistic NVG</title>
     <style>
-        body { margin: 0; background: #001a00; overflow: hidden; font-family: 'Courier New', Courier, monospace; cursor: crosshair; }
-        canvas { display: block; filter: sepia(100%) saturate(300%) hue-rotate(60deg); } /* Night Vision Look */
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; cursor: none; }
+        canvas { display: block; }
         
-        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px #0f0; pointer-events: none; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 20px; text-shadow: 0 0 5px #0f0; pointer-events: none; z-index: 10; }
         
         #game-over {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 30, 0, 0.95); padding: 30px; border: 4px solid #0f0;
-            text-align: center; display: none; width: 400px; color: #0f0;
+            background: rgba(0, 20, 0, 0.95); padding: 40px; border: 2px solid #0f0;
+            text-align: center; display: none; width: 400px; color: #0f0; z-index: 100;
         }
-        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-weight: bold; text-decoration: none; cursor: pointer; border: 2px solid #0f0; background: transparent; color: #0f0; font-size: 16px; text-transform: uppercase; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-weight: bold; text-decoration: none; cursor: pointer; border: 1px solid #0f0; background: transparent; color: #0f0; text-transform: uppercase; }
         .btn:hover { background: #0f0; color: #000; }
-        .sponsor-text { font-size: 14px; color: #0a0; margin: 15px 0 5px 0; }
+        .sponsor-text { font-size: 14px; color: #0a0; margin: 20px 0 5px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">SCORE: <span id="score">0</span> | TIME: <span id="timer">60</span></div>
+<div id="ui">SYSTEM_ACTIVE // SCORE: <span id="score">0</span> // TIME: <span id="timer">60</span>s</div>
 
 <div id="game-over">
-    <h1 style="margin-top:0;">HUNT COMPLETE</h1>
+    <h1 style="margin-top:0; letter-spacing: 4px;">SESSION ENDED</h1>
     <p id="final-stats"></p>
-    
-    <p class="sponsor-text">Want to see the pros in the wild?</p>
+    <p class="sponsor-text">You've tried the course. Now watch the real pros.</p>
     <a class="btn" href="https://www.youtube.com/@SancoOutdoors" target="_blank">🎬 SUB TO SANCO</a>
-    
-    <p class="sponsor-text">Or support the fine arts:</p>
+    <p class="sponsor-text">Or please tip the sponsor:</p>
     <a class="btn" href="https://www.sanangelogives.org/organization/emmanuelschooloffinearts" target="_blank">🎻 TIP ESOFA</a>
-    
-    <button class="btn" style="border-color: #aaa; color: #aaa;" onclick="location.reload()">RE-LOAD</button>
+    <button class="btn" style="border-color: #555; color: #555;" onclick="location.reload()">RE-INITIALIZE</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -47,119 +44,141 @@ canvas.height = window.innerHeight;
 let score = 0;
 let timeLeft = 60;
 let gameActive = true;
+let flashOpacity = 0;
 const deerArray = [];
-const particles = [];
 
-// Mouse Position
-let mouseX = 0;
-let mouseY = 0;
-window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+// Create static forest for depth
+const trees = Array.from({length: 40}, () => ({
+    x: Math.random() * canvas.width,
+    y: canvas.height - 100,
+    size: 100 + Math.random() * 400,
+    speed: 0.2 + Math.random() * 0.5
+}));
 
-// Shooting Logic
+let mouseX = canvas.width/2, mouseY = canvas.height/2;
+window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
 window.addEventListener('mousedown', () => {
     if (!gameActive) return;
+    flashOpacity = 0.8; // Camera flash effect
     
-    // Check for hits
     for (let i = deerArray.length - 1; i >= 0; i--) {
         let d = deerArray[i];
-        let dist = Math.sqrt((mouseX - d.x)**2 + (mouseY - d.y)**2);
-        if (dist < 50) {
+        let dx = mouseX - (d.x + d.w/2);
+        let dy = mouseY - (d.y + d.h/2);
+        if (Math.sqrt(dx*dx + dy*dy) < 50) {
             score += 10;
-            createTagEffect(d.x, d.y);
             deerArray.splice(i, 1);
             document.getElementById('score').innerText = score;
         }
     }
 });
 
-function createTagEffect(x, y) {
-    // Zero-blood flash/tag effect
-    for(let i=0; i<10; i++) {
-        particles.push({
-            x: x, y: y, 
-            vx: (Math.random()-0.5)*10, 
-            vy: (Math.random()-0.5)*10, 
-            life: 20
-        });
-    }
+function drawDeer(d) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    if (d.speed < 0) { ctx.scale(-1, 1); ctx.translate(-d.w, 0); }
+    
+    ctx.fillStyle = '#0f0';
+    let walk = Math.sin(d.frame) * 5;
+
+    // Body (Elliptical)
+    ctx.beginPath();
+    ctx.ellipse(40, 35, 35, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Legs
+    ctx.fillRect(15, 45, 3, 20 + walk);
+    ctx.fillRect(25, 45, 3, 20 - walk);
+    ctx.fillRect(55, 45, 3, 20 + walk);
+    ctx.fillRect(65, 45, 3, 20 - walk);
+
+    // Neck and Head
+    ctx.beginPath();
+    ctx.moveTo(65, 30);
+    ctx.lineTo(85, 5); // Neck
+    ctx.ellipse(88, 5, 12, 7, -0.5, 0, Math.PI * 2); // Head
+    ctx.fill();
+    
+    // Ears/Antlers
+    ctx.fillRect(80, -5, 2, 8);
+    ctx.fillRect(85, -8, 2, 10);
+    
+    ctx.restore();
 }
 
 function spawnDeer() {
     if (!gameActive) return;
-    let side = Math.random() > 0.5 ? 1 : -1;
+    let dir = Math.random() > 0.5 ? 1 : -1;
     deerArray.push({
-        x: side === 1 ? -100 : canvas.width + 100,
-        y: canvas.height * 0.5 + (Math.random() * 200),
-        speed: (2 + Math.random() * 4) * side,
-        w: 80, h: 60,
-        frame: 0
+        x: dir === 1 ? -100 : canvas.width + 100,
+        y: canvas.height - 250 + (Math.random() * 100),
+        speed: (3 + Math.random() * 3) * dir,
+        w: 100, h: 80, frame: 0
     });
-    setTimeout(spawnDeer, 1500 - (score * 5)); // Gets faster as you score
+    setTimeout(spawnDeer, 2000 - Math.min(score * 10, 1200));
 }
 
 function update() {
     if (!gameActive) return;
-
     deerArray.forEach((d, i) => {
         d.x += d.speed;
-        d.frame += 0.1;
+        d.frame += 0.15;
         if (d.x > canvas.width + 200 || d.x < -200) deerArray.splice(i, 1);
     });
-
-    particles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.life--;
-        if (p.life <= 0) particles.splice(i, 1);
-    });
-
+    if (flashOpacity > 0) flashOpacity -= 0.1;
     draw();
     requestAnimationFrame(update);
 }
 
 function draw() {
-    // Clear and build background
-    ctx.fillStyle = '#002200';
+    // Background (Dark Forest)
+    ctx.fillStyle = '#001a00';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Forest Silhouettes
-    ctx.fillStyle = '#001100';
-    for(let i=0; i<canvas.width; i+=100) {
-        ctx.fillRect(i, canvas.height - 300, 40, 300); // Simple Trees
-    }
-
-    // Draw Deer (Clean shapes)
-    deerArray.forEach(d => {
-        ctx.fillStyle = '#0f0';
-        let jump = Math.abs(Math.sin(d.frame)) * 10;
-        // Body
-        ctx.fillRect(d.x, d.y - jump, 60, 30);
-        // Legs
-        ctx.fillRect(d.x + 10, d.y + 30 - jump, 5, 20);
-        ctx.fillRect(d.x + 45, d.y + 30 - jump, 5, 20);
-        // Neck/Head
-        ctx.fillRect(d.x + (d.speed > 0 ? 50 : -10), d.y - 30 - jump, 15, 40);
-        // Antlers
-        ctx.fillRect(d.x + (d.speed > 0 ? 50 : -15), d.y - 45 - jump, 25, 5);
+    // Parallax Trees
+    ctx.fillStyle = '#000d00';
+    trees.forEach(t => {
+        ctx.fillRect(t.x, canvas.height - t.size, 15, t.size);
     });
 
-    // Draw Tag Particles
-    ctx.fillStyle = '#fff';
-    particles.forEach(p => ctx.fillRect(p.x, p.y, 4, 4));
+    // Draw Deer
+    deerArray.forEach(drawDeer);
 
-    // Night Vision HUD (The Scope)
-    ctx.strokeStyle = '#0f0';
-    ctx.lineWidth = 2;
+    // Flash Effect
+    if (flashOpacity > 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // SCOPE OVERLAY
+    ctx.save();
+    // Darken everything outside the lens
     ctx.beginPath();
-    ctx.arc(mouseX, mouseY, 60, 0, Math.PI * 2);
-    ctx.moveTo(mouseX - 80, mouseY); ctx.lineTo(mouseX + 80, mouseY);
-    ctx.moveTo(mouseX, mouseY - 80); ctx.lineTo(mouseX, mouseY + 80);
+    ctx.arc(mouseX, mouseY, 180, 0, Math.PI * 2, false);
+    ctx.rect(canvas.width, 0, -canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+    ctx.fill();
+
+    // Scope Lens Tint
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 180, 0, Math.PI * 2);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    
+    // Crosshairs
+    ctx.lineWidth = 1;
+    ctx.moveTo(mouseX - 200, mouseY); ctx.lineTo(mouseX + 200, mouseY);
+    ctx.moveTo(mouseX, mouseY - 200); ctx.lineTo(mouseX, mouseY + 200);
     ctx.stroke();
 
-    // Vignette
-    let grad = ctx.createRadialGradient(mouseX, mouseY, 100, mouseX, mouseY, 600);
-    grad.addColorStop(0, 'rgba(0,40,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.8)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0,0, canvas.width, canvas.height);
+    // Scanlines effect
+    ctx.fillStyle = "rgba(0, 255, 0, 0.05)";
+    for(let i=0; i<canvas.height; i+=4) {
+        ctx.fillRect(0, i, canvas.width, 1);
+    }
+    ctx.restore();
 }
 
 const timerInt = setInterval(() => {
@@ -168,8 +187,7 @@ const timerInt = setInterval(() => {
     document.getElementById('timer').innerText = timeLeft;
     if (timeLeft <= 0) {
         gameActive = false;
-        clearInterval(timerInt);
-        document.getElementById('final-stats').innerText = `TOTAL TAGS: ${score/10} | TOTAL SCORE: ${score}`;
+        document.getElementById('final-stats').innerText = `TOTAL TAGS: ${score/10} // FINAL SCORE: ${score}`;
         document.getElementById('game-over').style.display = 'block';
     }
 }, 1000);
