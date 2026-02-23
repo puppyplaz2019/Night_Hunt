@@ -2,29 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sanco's Night Hunt - Tactical Monitor</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; cursor: none; }
+        /* user-select and touch-action prevent zooming and highlighting on mobile */
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; cursor: none; touch-action: none; -webkit-user-select: none; user-select: none; }
         canvas { display: block; }
         
-        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 20px; text-shadow: 0 0 5px #0f0; pointer-events: none; z-index: 10; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: clamp(16px, 4vw, 20px); text-shadow: 0 0 5px #0f0; pointer-events: none; z-index: 10; }
         
         #game-over {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 20, 0, 0.95); padding: 40px; border: 2px solid #0f0;
-            text-align: center; display: none; width: 400px; color: #0f0; z-index: 100;
+            background: rgba(0, 20, 0, 0.95); padding: 30px; border: 2px solid #0f0;
+            text-align: center; display: none; width: 85%; max-width: 400px; color: #0f0; z-index: 100;
         }
-        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-weight: bold; text-decoration: none; cursor: pointer; border: 1px solid #0f0; background: transparent; color: #0f0; text-transform: uppercase; }
-        .btn:hover { background: #0f0; color: #000; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-weight: bold; text-decoration: none; cursor: pointer; border: 1px solid #0f0; background: transparent; color: #0f0; text-transform: uppercase; box-sizing: border-box; }
+        .btn:hover, .btn:active { background: #0f0; color: #000; }
         .sponsor-text { font-size: 14px; color: #0a0; margin: 20px 0 5px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">MONITOR_FEED_06 // SCORE: <span id="score">0</span> // TIME: <span id="timer">60</span>s</div>
+<div id="ui">MONITOR_FEED // SCORE: <span id="score">0</span> // TIME: <span id="timer">60</span>s</div>
 
 <div id="game-over">
-    <h1 style="margin-top:0; letter-spacing: 4px;">FEED DISCONNECTED</h1>
+    <h1 style="margin-top:0; letter-spacing: 2px;">FEED DISCONNECTED</h1>
     <p id="final-stats"></p>
     <p class="sponsor-text">Watch the real pros in the field:</p>
     <a class="btn" href="https://www.youtube.com/@SancoOutdoors" target="_blank">🎬 SUB TO SANCO</a>
@@ -38,8 +40,13 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
 let score = 0;
 let timeLeft = 60;
@@ -47,31 +54,48 @@ let gameActive = true;
 let flashOpacity = 0;
 const deerArray = [];
 
-const trees = Array.from({length: 55}, () => ({
-    x: Math.random() * canvas.width,
-    y: canvas.height - 100,
+const trees = Array.from({length: 45}, () => ({
+    x: Math.random() * window.innerWidth,
+    y: window.innerHeight - 100,
     w: 10 + Math.random() * 20,
     h: 200 + Math.random() * 500,
     shade: 5 + Math.floor(Math.random() * 12)
 }));
 
 let mouseX = canvas.width/2, mouseY = canvas.height/2;
-window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
 
-window.addEventListener('mousedown', () => {
+// Desktop Mouse Movement
+window.addEventListener('mousemove', e => { 
+    mouseX = e.clientX; 
+    mouseY = e.clientY; 
+});
+
+// Firing Logic (Reusable for Desktop and Mobile)
+function shoot(x, y) {
     if (!gameActive) return;
+    mouseX = x; 
+    mouseY = y;
     flashOpacity = 0.6; 
     for (let i = deerArray.length - 1; i >= 0; i--) {
         let d = deerArray[i];
-        let dx = mouseX - (d.x + d.w/2);
-        let dy = mouseY - (d.y + d.h/2);
-        if (Math.sqrt(dx*dx + dy*dy) < 60) {
+        let dx = x - (d.x + d.w/2);
+        let dy = y - (d.y + d.h/2);
+        if (Math.sqrt(dx*dx + dy*dy) < 70) { // Slightly bigger hit-box for fat fingers
             score += 10;
             deerArray.splice(i, 1);
             document.getElementById('score').innerText = score;
         }
     }
-});
+}
+
+// Desktop Click
+window.addEventListener('mousedown', e => shoot(e.clientX, e.clientY));
+
+// Mobile Tap
+window.addEventListener('touchstart', e => {
+    e.preventDefault(); // Prevents screen from moving when tapping
+    shoot(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive: false});
 
 function drawDeer(d) {
     ctx.save();
@@ -83,31 +107,19 @@ function drawDeer(d) {
     bodyGrad.addColorStop(0, '#4f4');
     bodyGrad.addColorStop(1, '#080');
     ctx.fillStyle = bodyGrad;
-    ctx.beginPath();
-    ctx.ellipse(45, 38, 36, 14, 0, 0, Math.PI * 2); // Skinny build
-    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(45, 38, 36, 14, 0, 0, Math.PI * 2); ctx.fill();
 
     ctx.fillStyle = '#0a0';
-    ctx.fillRect(22, 48, 2, 28 + walk); // Skinny legs
-    ctx.fillRect(34, 48, 2, 28 - walk);
-    ctx.fillRect(58, 48, 2, 28 + walk);
-    ctx.fillRect(70, 48, 2, 28 - walk);
+    ctx.fillRect(22, 48, 2, 28 + walk); ctx.fillRect(34, 48, 2, 28 - walk);
+    ctx.fillRect(58, 48, 2, 28 + walk); ctx.fillRect(70, 48, 2, 28 - walk);
 
     ctx.fillStyle = '#3f3';
-    ctx.beginPath();
-    ctx.moveTo(70, 38);
-    ctx.quadraticCurveTo(82, 35, 95, 10); // Skinny neck
-    ctx.lineTo(112, 16); 
-    ctx.lineTo(106, 6); 
-    ctx.lineTo(90, 5);
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(70, 38); ctx.quadraticCurveTo(82, 35, 95, 10);
+    ctx.lineTo(112, 16); ctx.lineTo(106, 6); ctx.lineTo(90, 5); ctx.fill();
     
-    ctx.strokeStyle = '#6f6';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
+    ctx.strokeStyle = '#6f6'; ctx.lineWidth = 2; ctx.beginPath();
     ctx.moveTo(92, 5); ctx.quadraticCurveTo(80, -30, 110, -50);
-    ctx.moveTo(96, 5); ctx.quadraticCurveTo(110, -30, 130, -40);
-    ctx.stroke();
+    ctx.moveTo(96, 5); ctx.quadraticCurveTo(110, -30, 130, -40); ctx.stroke();
     ctx.restore();
 }
 
@@ -136,12 +148,12 @@ function update() {
 }
 
 function draw() {
-    ctx.fillStyle = '#001a00';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#001a00'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Dynamic Tree Y-position based on screen size
     trees.forEach(t => {
         ctx.fillStyle = `rgb(0, ${t.shade}, 0)`;
-        ctx.fillRect(t.x, canvas.height - t.h, t.w, t.h);
+        ctx.fillRect(t.x, canvas.height - 100, t.w, t.h);
     });
 
     deerArray.forEach(drawDeer);
@@ -151,27 +163,18 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // TACTICAL CROSSHAIR (Stationary Camera)
-    ctx.strokeStyle = '#0f0'; 
-    ctx.lineWidth = 1;
-    // Main crosshair lines
+    ctx.strokeStyle = '#0f0'; ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(mouseX - 30, mouseY); ctx.lineTo(mouseX + 30, mouseY);
     ctx.moveTo(mouseX, mouseY - 30); ctx.lineTo(mouseX, mouseY + 30);
     ctx.stroke();
-    // Aiming circle
-    ctx.beginPath();
-    ctx.arc(mouseX, mouseY, 15, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(mouseX, mouseY, 15, 0, Math.PI * 2); ctx.stroke();
 
-    // DIGITAL OVERLAY / VIGNETTE
-    let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.width/4, canvas.width/2, canvas.height/2, canvas.width);
+    let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.width/4, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height));
     grad.addColorStop(0, 'rgba(0,255,0,0)');
     grad.addColorStop(1, 'rgba(0,0,0,0.7)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Scanlines
     ctx.fillStyle = "rgba(0, 255, 0, 0.03)";
     for(let i=0; i<canvas.height; i+=4) { ctx.fillRect(0, i, canvas.width, 1); }
 }
@@ -184,6 +187,7 @@ setInterval(() => {
         gameActive = false;
         document.getElementById('final-stats').innerText = `TAGS: ${score/10} // TOTAL: ${score}`;
         document.getElementById('game-over').style.display = 'block';
+        document.body.style.cursor = 'default'; // Bring cursor back for UI
     }
 }, 1000);
 
