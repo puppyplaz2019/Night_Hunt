@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sanco's Night Hunt - Trophy Buck Edition</title>
+    <title>Sanco's Night Hunt - Realistic Shading</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; cursor: none; }
         canvas { display: block; }
@@ -47,12 +47,11 @@ let gameActive = true;
 let flashOpacity = 0;
 const deerArray = [];
 
-// Realistic forest backdrop
-const trees = Array.from({length: 45}, () => ({
+const trees = Array.from({length: 50}, () => ({
     x: Math.random() * canvas.width,
     y: canvas.height - 100,
-    w: 20 + Math.random() * 30,
-    h: 200 + Math.random() * 400,
+    w: 15 + Math.random() * 25,
+    h: 150 + Math.random() * 450,
     shade: 5 + Math.floor(Math.random() * 15)
 }));
 
@@ -62,7 +61,6 @@ window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clien
 window.addEventListener('mousedown', () => {
     if (!gameActive) return;
     flashOpacity = 0.7; 
-    
     for (let i = deerArray.length - 1; i >= 0; i--) {
         let d = deerArray[i];
         let dx = mouseX - (d.x + d.w/2);
@@ -80,37 +78,43 @@ function drawDeer(d) {
     ctx.translate(d.x, d.y);
     if (d.speed < 0) { ctx.scale(-1, 1); ctx.translate(-d.w, 0); }
     
-    ctx.fillStyle = '#0f0';
     let walk = Math.sin(d.frame) * 4;
 
-    // Muscular Body
+    // 1. LEANER BODY with GRADIENT SHADING
+    // Create a gradient to give the body depth (brighter center, darker edges)
+    let bodyGrad = ctx.createRadialGradient(45, 35, 5, 45, 40, 35);
+    bodyGrad.addColorStop(0, '#4f4'); // Highlight
+    bodyGrad.addColorStop(1, '#0a0'); // Shadow green
+    ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.ellipse(45, 40, 42, 22, 0, 0, Math.PI * 2);
+    // Reduced vertical radius from 22 to 16 for skinnier look
+    ctx.ellipse(45, 38, 38, 16, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Thicker Legs
-    ctx.fillRect(18, 50, 5, 25 + walk);
-    ctx.fillRect(30, 50, 5, 25 - walk);
-    ctx.fillRect(60, 50, 5, 25 + walk);
-    ctx.fillRect(72, 50, 5, 25 - walk);
+    // 2. SKINNER LEGS
+    ctx.fillStyle = '#0b0'; // Slightly darker solid green for legs
+    // Reduced width from 5 to 3
+    ctx.fillRect(20, 48, 3, 28 + walk);
+    ctx.fillRect(32, 48, 3, 28 - walk);
+    ctx.fillRect(60, 48, 3, 28 + walk);
+    ctx.fillRect(72, 48, 3, 28 - walk);
 
-    // Thick Neck and Realistic Head
+    // 3. SLIMMER NECK & HEAD
+    ctx.fillStyle = '#3f3'; // Brighter green for head area
     ctx.beginPath();
-    ctx.moveTo(70, 40);
-    ctx.quadraticCurveTo(85, 40, 95, 10); // Neck curve
-    ctx.lineTo(110, 15); // Snout
-    ctx.lineTo(105, 5); 
+    ctx.moveTo(70, 38); // Adjusted starting point
+    ctx.quadraticCurveTo(82, 35, 95, 10); // Slimmer neck curve
+    ctx.lineTo(112, 16); // Snout
+    ctx.lineTo(106, 6); 
     ctx.lineTo(90, 5);
     ctx.fill();
     
-    // Large Branching Antlers (Trophy Buck style)
-    ctx.strokeStyle = '#0f0';
-    ctx.lineWidth = 3;
+    // Antlers (Brighter green)
+    ctx.strokeStyle = '#6f6';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    // Main beams
     ctx.moveTo(92, 5); ctx.quadraticCurveTo(80, -30, 110, -50);
     ctx.moveTo(96, 5); ctx.quadraticCurveTo(110, -30, 130, -40);
-    // Tines (points)
     ctx.moveTo(95, -25); ctx.lineTo(105, -45);
     ctx.moveTo(105, -35); ctx.lineTo(120, -55);
     ctx.stroke();
@@ -123,7 +127,7 @@ function spawnDeer() {
     let dir = Math.random() > 0.5 ? 1 : -1;
     deerArray.push({
         x: dir === 1 ? -150 : canvas.width + 150,
-        y: canvas.height - 280 + (Math.random() * 80),
+        y: canvas.height - 270 + (Math.random() * 70),
         speed: (2.5 + Math.random() * 2.5) * dir,
         w: 120, h: 100, frame: 0
     });
@@ -146,7 +150,6 @@ function draw() {
     ctx.fillStyle = '#001a00';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Parallax Trees
     trees.forEach(t => {
         ctx.fillStyle = `rgb(0, ${t.shade}, 0)`;
         ctx.fillRect(t.x, canvas.height - t.h, t.w, t.h);
@@ -159,43 +162,26 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // BINOCULAR SCOPE OVERLAY
     ctx.save();
-    
-    // Binocular Cutout (Two circles)
     ctx.beginPath();
     let offset = 160; 
     ctx.arc(mouseX - offset, mouseY, 220, 0, Math.PI * 2, false);
     ctx.arc(mouseX + offset, mouseY, 220, 0, Math.PI * 2, false);
     ctx.rect(canvas.width, 0, -canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.93)";
     ctx.fill();
 
-    // Binocular Borders
-    ctx.strokeStyle = '#0f0';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(mouseX - offset, mouseY, 220, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(mouseX + offset, mouseY, 220, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.strokeStyle = '#0f0'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(mouseX - offset, mouseY, 220, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(mouseX + offset, mouseY, 220, 0, Math.PI * 2); ctx.stroke();
     
-    // Grid Lines (from your screenshot)
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
-    for(let x = -400; x <= 400; x += 80) {
-        ctx.moveTo(mouseX + x, mouseY - 220); ctx.lineTo(mouseX + x, mouseY + 220);
-    }
-    for(let y = -220; y <= 220; y += 80) {
-        ctx.moveTo(mouseX - 380, mouseY + y); ctx.lineTo(mouseX + 380, mouseY + y);
-    }
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+    for(let x = -400; x <= 400; x += 80) { ctx.moveTo(mouseX + x, mouseY - 220); ctx.lineTo(mouseX + x, mouseY + 220); }
+    for(let y = -220; y <= 220; y += 80) { ctx.moveTo(mouseX - 380, mouseY + y); ctx.lineTo(mouseX + 380, mouseY + y); }
     ctx.stroke();
 
-    // Scanlines
     ctx.fillStyle = "rgba(0, 255, 0, 0.04)";
     for(let i=0; i<canvas.height; i+=4) { ctx.fillRect(0, i, canvas.width, 1); }
-    
     ctx.restore();
 }
 
